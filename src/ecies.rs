@@ -107,7 +107,7 @@ impl Ecies {
 
         let (encryption_key, mac_key) = self.derive_keys(&shared_key)?;
 
-        let total_size: u16 = u16::try_from(65 + 16 + data_in.len() + 32).unwrap();
+        let total_size = u16::try_from(65 + 16 + data_in.len() + 32)?;
 
         let encrypted_data = self.encrypt_data(data_in, &iv, &encryption_key);
 
@@ -150,6 +150,7 @@ impl Ecies {
         hmac.update(iv.as_bytes());
         hmac.update(encrypted_data);
         hmac.update(total_size);
+
         Ok(H256::from_slice(&hmac.finalize().into_bytes()))
     }
 
@@ -160,6 +161,7 @@ impl Ecies {
     ) -> Result<H256> {
         let shared_key_bytes = secp256k1::ecdh::shared_secret_point(public_key, private_key);
         let shared_key = H256::from_slice(&shared_key_bytes[..32]);
+
         Ok(shared_key)
     }
 
@@ -170,6 +172,7 @@ impl Ecies {
 
         let encryption_key = H128::from_slice(&key[..16]);
         let mac_key = H256::from(Sha256::digest(&key[16..32]).as_ref());
+
         Ok((encryption_key, mac_key))
     }
 
@@ -177,6 +180,7 @@ impl Ecies {
         let mut encryptor = Aes128Ctr64BE::new(encryption_key.as_ref().into(), iv.as_ref().into());
         let mut encrypted_data = data;
         encryptor.apply_keystream(&mut encrypted_data);
+
         encrypted_data
     }
 

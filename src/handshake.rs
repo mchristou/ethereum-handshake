@@ -110,28 +110,10 @@ impl Handshake {
             )[..32],
         );
 
-        // shared-secret
-        let mut hasher = Keccak256::new();
-        hasher.update(recipient_nonce);
-        hasher.update(self.ecies.nonce);
-        let keccak_nonce = H256::from(hasher.finalize().as_ref());
-
-        let mut hasher = Keccak256::new();
-        hasher.update(ephemeral_key);
-        hasher.update(keccak_nonce.as_ref());
-        let shared_secret = H256::from(hasher.finalize().as_ref());
-
-        // aes-secret
-        let mut hasher = Keccak256::new();
-        hasher.update(ephemeral_key.as_ref());
-        hasher.update(shared_secret.as_ref());
-        let aes_secret = H256::from(hasher.finalize().as_ref());
-
-        // mac-secret
-        let mut hasher = Keccak256::new();
-        hasher.update(ephemeral_key.as_ref());
-        hasher.update(aes_secret.as_ref());
-        let mac_secret = H256::from(hasher.finalize().as_ref());
+        let keccak_nonce = self.create_hash(&[recipient_nonce.as_ref(), self.ecies.nonce.as_ref()]);
+        let shared_secret = self.create_hash(&[ephemeral_key.as_ref(), keccak_nonce.as_ref()]);
+        let aes_secret = self.create_hash(&[ephemeral_key.as_ref(), shared_secret.as_ref()]);
+        let mac_secret = self.create_hash(&[ephemeral_key.as_ref(), aes_secret.as_ref()]);
 
         // egress-mac
         let mut egress_mac = HashMac::new(mac_secret);
@@ -158,6 +140,16 @@ impl Handshake {
         });
 
         Ok(())
+    }
+
+    fn create_hash(&self, inputs: &[&[u8]]) -> H256 {
+        let mut hasher = Keccak256::new();
+
+        for input in inputs {
+            hasher.update(input)
+        }
+
+        H256::from(hasher.finalize().as_ref())
     }
 
     pub fn hello_msg(&mut self) -> BytesMut {

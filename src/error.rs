@@ -1,3 +1,5 @@
+use std::num::TryFromIntError;
+
 use ethereum_types::{H128, H256};
 use rlp::DecoderError;
 use thiserror::Error;
@@ -41,4 +43,7 @@ pub enum Error {
 
     #[error("secp256k1 error: {0}")]
     Secp256k1(String),
+
+    #[error("TryFromIntError: {0}")]
+    TryFromInt(#[from] TryFromIntError),
 }
