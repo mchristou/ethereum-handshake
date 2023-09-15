@@ -1,0 +1,27 @@
+[package]
+name = "ethereum-handshake"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rlp = "0.5.2"
+tokio = {version = "1.31.0", features= ["net", "rt", "macros", "time", 
+"io-util"]}
+thiserror = "1.0.46"
+hex = "0.4.3"
+secp256k1 = { version = "0.27.0", features = [
+  "global-context",
+  "rand-std",
+  "recovery",
+] }
+bytes = "1.4.0"
+concat-kdf = "0.1.0"
+sha2 = "0.10.7"
+sha3 = "0.10.8"
+aes = "0.8.3"
+ctr = "0.9.2"
+hmac = "0.12.1"
+byteorder = "1.4.3"
+ethereum-types = "0.14.1"
