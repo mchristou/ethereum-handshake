@@ -1,5 +1,6 @@
-use crate::hash_mac::HashMac;
 use ethereum_types::H256;
+
+use crate::hash_mac::HashMac;
 
 pub type Aes128Ctr64BE = ctr::Ctr64BE<aes::Aes128>;
 pub type Aes256Ctr64BE = ctr::Ctr64BE<aes::Aes256>;

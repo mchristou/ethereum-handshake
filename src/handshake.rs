@@ -11,7 +11,7 @@ use crate::{
     ecies::Ecies,
     error::{Error, Result},
     hash_mac::HashMac,
-    messages::Hello,
+    messages::{Disconnect, Hello, Ping, Pong},
     secret::{Aes256Ctr64BE, Secrets},
 };
 
@@ -74,12 +74,8 @@ impl Handshake {
         self.ecies.encrypt(data_in, data_out)
     }
 
-    pub fn decrypt<'a>(
-        &mut self,
-        data_in: &'a mut [u8],
-        read_bytes: &mut u16,
-    ) -> Result<&'a mut [u8]> {
-        self.ecies.decrypt(data_in, read_bytes)
+    pub fn decrypt<'a>(&mut self, data_in: &'a mut [u8]) -> Result<&'a mut [u8]> {
+        self.ecies.decrypt(data_in)
     }
 
     pub fn derive_secrets(&mut self, ack_body: &[u8]) -> Result<()> {
@@ -152,6 +148,24 @@ impl Handshake {
         H256::from(hasher.finalize().as_ref())
     }
 
+    pub fn ping_msg(&mut self) -> BytesMut {
+        let msg = Ping {};
+
+        let mut encoded_hello = BytesMut::default();
+        encoded_hello.extend_from_slice(&rlp::encode(&msg));
+
+        self.write_frame(&encoded_hello)
+    }
+
+    pub fn pong_msg(&mut self) -> BytesMut {
+        let msg = Pong {};
+
+        let mut encoded_hello = BytesMut::default();
+        encoded_hello.extend_from_slice(&rlp::encode(&msg));
+
+        self.write_frame(&encoded_hello)
+    }
+
     pub fn hello_msg(&mut self) -> BytesMut {
         let msg = Hello {
             protocol_version: PROTOCOL_VERSION,
@@ -166,6 +180,16 @@ impl Handshake {
         encoded_hello.extend_from_slice(&rlp::encode(&msg));
 
         self.write_frame(&encoded_hello)
+    }
+
+    pub fn disconnect_msg(&mut self, reason: usize) -> BytesMut {
+        let msg = Disconnect { reason };
+
+        let mut encoded_disc = BytesMut::default();
+        encoded_disc.extend_from_slice(&rlp::encode(&1_u8));
+        encoded_disc.extend_from_slice(&rlp::encode(&msg));
+
+        self.write_frame(&encoded_disc)
     }
 
     fn write_frame(&mut self, data: &[u8]) -> BytesMut {
@@ -208,7 +232,11 @@ impl Handshake {
         out
     }
 
-    pub fn read_frame(&mut self, buf: &mut [u8]) -> Result<Vec<u8>> {
+    pub fn read_frame(&mut self, buf: &mut [u8]) -> Result<(Vec<u8>, usize), Error> {
+        if buf.len() < 32 {
+            return Err(Error::InvalidInput("Too short".to_string()));
+        }
+
         let (header_bytes, frame) = buf.split_at_mut(32);
         let (header, mac) = header_bytes.split_at_mut(16);
         let mac = H128::from_slice(mac);
@@ -235,13 +263,15 @@ impl Handshake {
         secrets.ingress_mac.compute_frame(frame_data);
 
         if frame_mac == secrets.ingress_mac.digest() {
-            println!("\nHanshake completed succesfully\n Received MAC is valid!!!\n");
+            println!("\nHandshake completed successfully\nReceived MAC is valid!!!\n");
         } else {
             return Err(Error::InvalidMac(frame_mac));
         }
 
         secrets.ingress_aes.apply_keystream(frame_data);
 
-        Ok(frame_data.to_owned())
+        let total_bytes_used = 32 + frame_size as usize;
+
+        Ok((frame_data.to_owned(), total_bytes_used))
     }
 }

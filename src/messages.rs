@@ -1,6 +1,21 @@
 use rlp::{Decodable, Encodable};
 use secp256k1::PublicKey;
 
+pub type Reason = usize;
+const PING_BYTES: [u8; 3] = [0x1, 0x0, 0xc0];
+pub const PING_ID: u8 = 0x2;
+pub const PONG_ID: u8 = 0x3;
+
+#[derive(Debug)]
+pub enum Message {
+    Auth,
+    AuthAck,
+    Hello,
+    Ping,
+    Pong,
+    Disconnect(Reason),
+}
+
 #[derive(Debug)]
 pub struct Hello {
     pub protocol_version: usize,
@@ -19,6 +34,40 @@ pub struct Capability {
 #[derive(Debug)]
 pub struct Disconnect {
     pub reason: usize,
+}
+
+#[derive(Debug)]
+pub struct Ping {}
+
+#[derive(Debug)]
+pub struct Pong {}
+
+impl Encodable for Ping {
+    fn rlp_append(&self, s: &mut rlp::RlpStream) {
+        s.begin_list(2);
+        s.append(&PING_ID);
+        s.append(&PING_BYTES.as_ref());
+    }
+}
+
+impl Encodable for Pong {
+    fn rlp_append(&self, s: &mut rlp::RlpStream) {
+        s.begin_list(2);
+        s.append(&PONG_ID);
+        s.append(&PING_BYTES.as_ref());
+    }
+}
+
+impl Decodable for Ping {
+    fn decode(_rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        Ok(Self {})
+    }
+}
+
+impl Decodable for Pong {
+    fn decode(_rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        Ok(Self {})
+    }
 }
 
 impl Encodable for Disconnect {

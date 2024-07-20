@@ -1,9 +1,10 @@
+use futures::SinkExt;
+use futures::StreamExt;
 use secp256k1::{PublicKey, SecretKey};
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpStream,
-};
+use tokio::net::TcpStream;
+use tokio_util::codec::Framed;
 
+mod codec;
 mod ecies;
 mod error;
 mod handshake;
@@ -12,18 +13,18 @@ mod messages;
 mod secret;
 
 use crate::{
+    codec::Codec,
     error::{Error, Result},
     handshake::Handshake,
-    messages::{Disconnect, Hello},
 };
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let (node_public_key, node_address) = parse_input().unwrap();
-    println!("Target adress: {node_address}");
+    println!("Target address: {node_address}");
 
     if let Ok(mut stream) = TcpStream::connect(node_address).await {
-        println!("Connected to target adress");
+        println!("Connected to target address");
         if let Err(e) = handshake(&mut stream, node_public_key).await {
             println!("{e}");
         }
@@ -35,60 +36,35 @@ async fn main() {
 async fn handshake(stream: &mut TcpStream, node_public_key: PublicKey) -> Result<()> {
     let private_key = SecretKey::new(&mut secp256k1::rand::thread_rng());
 
-    let mut handshake = Handshake::new(private_key, node_public_key);
+    let handshake = Handshake::new(private_key, node_public_key);
+    let mut framed = Framed::new(stream, Codec::new(handshake));
 
-    let auth_encrypted = handshake.auth();
+    framed.send(messages::Message::Auth).await?;
+    println!("Auth message sent to target node");
 
-    if stream.write(&auth_encrypted).await? == 0 {
-        return Err(Error::TcpConnectionClosed);
+    loop {
+        match framed.next().await {
+            Some(Ok(frame)) => match frame {
+                messages::Message::Auth => {}
+                messages::Message::AuthAck => {}
+                messages::Message::Hello => {
+                    framed.send(messages::Message::Ping).await?;
+                }
+                messages::Message::Ping => {
+                    framed.send(messages::Message::Pong).await?;
+                }
+                messages::Message::Pong => {}
+                messages::Message::Disconnect(reason) => {
+                    println!("Disconnecting with reason: {reason}");
+                    std::process::exit(0);
+                }
+            },
+            Some(Err(e)) => {
+                println!("{e}");
+            }
+            None => {}
+        }
     }
-
-    println!("Auth message send to target node");
-
-    let mut buf = [0_u8; 1024];
-    let resp = stream.read(&mut buf).await?;
-
-    if resp == 0 {
-        return Err(Error::AuthResponse());
-    }
-
-    let mut bytes_used = 0u16;
-
-    let decrypted = handshake.decrypt(&mut buf, &mut bytes_used)?;
-
-    if bytes_used == resp as u16 {
-        return Err(Error::InvalidResponse(
-            "Recipient's response does not contain the Hello message".to_string(),
-        ));
-    }
-
-    handshake.derive_secrets(decrypted)?;
-
-    let hello_frame = handshake.hello_msg();
-    if stream.write(&hello_frame).await? == 0 {
-        return Err(Error::TcpConnectionClosed);
-    }
-
-    let frame = handshake.read_frame(&mut buf[bytes_used as usize..resp])?;
-    handle_incoming_frame(frame)?;
-
-    Ok(())
-}
-
-fn handle_incoming_frame(frame: Vec<u8>) -> Result<()> {
-    let message_id: u8 = rlp::decode(&[frame[0]])?;
-
-    if message_id == 0 {
-        let hello: Hello = rlp::decode(&frame[1..])?;
-        println!("Hello message from target node:\n{:?}", hello);
-    }
-
-    if message_id == 1 {
-        let disc: Disconnect = rlp::decode(&frame[1..])?;
-        println!("Disconnect message from target node: \n{:?}", disc);
-    }
-
-    Ok(())
 }
 
 fn parse_input() -> Result<(PublicKey, String)> {

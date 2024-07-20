@@ -7,8 +7,13 @@ edition = "2021"
 
 [dependencies]
 rlp = "0.5.2"
-tokio = {version = "1.31.0", features= ["net", "rt", "macros", "time", 
-"io-util"]}
+tokio = { version = "1.31.0", features = [
+  "net",
+  "rt",
+  "macros",
+  "time",
+  "io-util",
+] }
 thiserror = "1.0.46"
 hex = "0.4.3"
 secp256k1 = { version = "0.27.0", features = [
@@ -18,6 +23,7 @@ secp256k1 = { version = "0.27.0", features = [
 ] }
 bytes = "1.4.0"
 concat-kdf = "0.1.0"
+tokio-stream = "0.1.15"
 sha2 = "0.10.7"
 sha3 = "0.10.8"
 aes = "0.8.3"
@@ -25,3 +31,5 @@ ctr = "0.9.2"
 hmac = "0.12.1"
 byteorder = "1.4.3"
 ethereum-types = "0.14.1"
+tokio-util = { version = "0.7.11", features = ["codec"] }
+futures = "0.3.30"

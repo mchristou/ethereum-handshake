@@ -20,17 +20,8 @@ pub enum Error {
     #[error("Invalid input {0}")]
     InvalidInput(String),
 
-    #[error("Auth response did not received")]
-    AuthResponse(),
-
     #[error("Decoder error: {0}")]
     Decoder(#[from] DecoderError),
-
-    #[error("Invalid response received: {0}")]
-    InvalidResponse(String),
-
-    #[error("Tcp connection closed")]
-    TcpConnectionClosed,
 
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),

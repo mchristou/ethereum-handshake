@@ -10,6 +10,7 @@ use crate::{
     secret::Aes128Ctr64BE,
 };
 
+#[derive(Debug)]
 pub struct Ecies {
     pub private_key: SecretKey,
     pub private_ephemeral_key: SecretKey,
@@ -43,17 +44,12 @@ impl Ecies {
         }
     }
 
-    pub fn decrypt<'a>(
-        &mut self,
-        data_in: &'a mut [u8],
-        read_bytes: &mut u16,
-    ) -> Result<&'a mut [u8]> {
+    pub fn decrypt<'a>(&mut self, data_in: &'a mut [u8]) -> Result<&'a mut [u8]> {
         if data_in.len() < 2 {
             return Err(Error::InvalidInput("Input data too short".to_string()));
         }
 
         let payload_size = u16::from_be_bytes([data_in[0], data_in[1]]);
-        *read_bytes = payload_size + 2;
 
         self.auth_response = Some(Bytes::copy_from_slice(
             &data_in[..payload_size as usize + 2],
