@@ -1,57 +1,59 @@
+use bytes::{Buf, BytesMut};
+use log::{debug, error, info};
+use tokio_util::codec::{Decoder, Encoder};
+
 use crate::{
+    error::{Error, Result},
     handshake::Handshake,
     messages::{Disconnect, Hello, Message, Ping, Pong},
 };
-use bytes::BytesMut;
-use tokio_util::codec::{Decoder, Encoder};
-
-use crate::error::Result;
 
 enum State {
     Auth,
     AuthAck,
     Frame,
 }
+
 pub struct Codec {
-    pub handshake: Handshake,
+    handshake: Handshake,
     state: State,
 }
 
 impl Codec {
     pub fn new(handshake: Handshake) -> Self {
-        Codec {
+        Self {
             handshake,
             state: State::Auth,
         }
     }
 
     fn handle_incoming_frame(frame: Vec<u8>) -> Result<Message> {
-        let message_id: u8 = rlp::decode(&[frame[0]])?;
-        println!("message id {message_id}");
+        let message_id = rlp::decode::<u8>(&[frame[0]])?;
+        debug!("Message ID: {}", message_id);
 
-        if message_id == 0 {
-            let hello: Hello = rlp::decode(&frame[1..])?;
-            println!("Hello message from target node:\n{:?}", hello);
-            return Ok(Message::Hello);
+        match message_id {
+            0 => {
+                let hello = rlp::decode::<Hello>(&frame[1..])?;
+                info!("Hello message from target node:\n{:?}", hello);
+                Ok(Message::Hello)
+            }
+            1 => {
+                let disc = rlp::decode::<Disconnect>(&frame[1..])?;
+                info!("Disconnect message from target node:\n{:?}", disc);
+                Ok(Message::Disconnect(disc.reason))
+            }
+            2 => {
+                let _ping = rlp::decode::<Ping>(&frame[1..])?;
+                info!("Ping message received");
+                Ok(Message::Ping)
+            }
+            3 => {
+                let _pong = rlp::decode::<Pong>(&frame[1..])?;
+                info!("Pong message received");
+                Ok(Message::Pong)
+            }
+            _ => Err(Error::UnsupportedMessageId(message_id)),
         }
-
-        if message_id == 1 {
-            let disc: Disconnect = rlp::decode(&frame[1..])?;
-            println!("Disconnect message from target node: \n{:?}", disc);
-            return Ok(Message::Disconnect(disc.reason));
-        }
-
-        if message_id == 2 {
-            let _ping: Ping = rlp::decode(&frame[1..])?;
-            return Ok(Message::Ping);
-        }
-
-        if message_id == 3 {
-            let _pong: Pong = rlp::decode(&frame[1..])?;
-            return Ok(Message::Pong);
-        }
-
-        unimplemented!()
     }
 }
 
@@ -66,6 +68,7 @@ impl Encoder<Message> for Codec {
                 dst.extend_from_slice(&auth);
             }
             Message::AuthAck => {
+                // Implement AuthAck encoding here
                 todo!()
             }
             Message::Hello => {
@@ -77,7 +80,6 @@ impl Encoder<Message> for Codec {
                 dst.extend_from_slice(&disc);
             }
             Message::Ping => {
-                println!("sending ping");
                 let ping = self.handshake.ping_msg();
                 dst.extend_from_slice(&ping);
             }
@@ -93,45 +95,47 @@ impl Encoder<Message> for Codec {
 
 impl Decoder for Codec {
     type Item = Message;
-    type Error = crate::error::Error;
+    type Error = Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        loop {
-            match self.state {
-                State::Auth => self.state = State::AuthAck,
-                State::AuthAck => {
-                    if src.len() < 2 {
-                        return Ok(None);
-                    }
-
-                    let payload = u16::from_be_bytes([src[0], src[1]]) as usize;
-                    let total_size = payload + 2;
-
-                    if src.len() < total_size {
-                        // incomplete auth ack
-                        return Ok(None);
-                    }
-
-                    let mut buf = src.split_to(total_size);
-
-                    let auth_ack = self.handshake.decrypt(&mut buf)?;
-                    self.handshake.derive_secrets(auth_ack)?;
-
-                    self.state = State::Frame;
-
-                    return Ok(Some(Message::AuthAck));
-                }
-                State::Frame => {
-                    if src.is_empty() {
-                        return Ok(None);
-                    }
-
-                    if let Ok((frame, size_used)) = self.handshake.read_frame(&mut src[..]) {
-                        let _ = src.split_to(size_used);
-                        return Ok(Some(Self::handle_incoming_frame(frame)?));
-                    }
-
+        match self.state {
+            State::Auth => {
+                self.state = State::AuthAck;
+                Ok(None)
+            }
+            State::AuthAck => {
+                if src.len() < 2 {
                     return Ok(None);
+                }
+
+                let payload = u16::from_be_bytes([src[0], src[1]]) as usize;
+                let total_size = payload + 2;
+
+                if src.len() < total_size {
+                    return Ok(None);
+                }
+
+                let mut buf = src.split_to(total_size);
+                let auth_ack = self.handshake.decrypt(&mut buf)?;
+                self.handshake.derive_secrets(auth_ack)?;
+
+                self.state = State::Frame;
+                Ok(Some(Message::AuthAck))
+            }
+            State::Frame => {
+                if src.is_empty() {
+                    return Ok(None);
+                }
+
+                match self.handshake.read_frame(&mut src[..]) {
+                    Ok((frame, size_used)) => {
+                        src.advance(size_used);
+                        Self::handle_incoming_frame(frame).map(Some)
+                    }
+                    Err(e) => {
+                        error!("Failed to read frame: {:?}", e);
+                        Ok(None)
+                    }
                 }
             }
         }

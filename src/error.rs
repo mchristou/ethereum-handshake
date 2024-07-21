@@ -37,4 +37,7 @@ pub enum Error {
 
     #[error("TryFromIntError: {0}")]
     TryFromInt(#[from] TryFromIntError),
+
+    #[error("Unsupported message id: {0}")]
+    UnsupportedMessageId(u8),
 }

@@ -1,6 +1,9 @@
-use futures::SinkExt;
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
+use log::warn;
+use log::{error, info};
 use secp256k1::{PublicKey, SecretKey};
+use std::env;
+use std::process;
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 
@@ -16,78 +19,99 @@ use crate::{
     codec::Codec,
     error::{Error, Result},
     handshake::Handshake,
+    messages::Message,
 };
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let (node_public_key, node_address) = parse_input().unwrap();
-    println!("Target address: {node_address}");
+    env_logger::init();
 
-    if let Ok(mut stream) = TcpStream::connect(node_address).await {
-        println!("Connected to target address");
-        if let Err(e) = handshake(&mut stream, node_public_key).await {
-            println!("{e}");
+    match parse_input() {
+        Ok((node_public_key, node_address)) => {
+            info!("Target address: {node_address}");
+            match TcpStream::connect(&node_address).await {
+                Ok(mut stream) => {
+                    info!("Connected to target address");
+                    if let Err(e) = perform_handshake(&mut stream, node_public_key).await {
+                        error!("Handshake error: {e}");
+                    }
+                }
+                Err(e) => error!("Failed to connect to the given Ethereum node: {e}"),
+            }
         }
-    } else {
-        println!("Failed to connect to the given Ethereum node.");
+        Err(e) => error!("Error parsing input: {e}"),
     }
 }
 
-async fn handshake(stream: &mut TcpStream, node_public_key: PublicKey) -> Result<()> {
+async fn perform_handshake(stream: &mut TcpStream, node_public_key: PublicKey) -> Result<()> {
     let private_key = SecretKey::new(&mut secp256k1::rand::thread_rng());
-
     let handshake = Handshake::new(private_key, node_public_key);
     let mut framed = Framed::new(stream, Codec::new(handshake));
 
-    framed.send(messages::Message::Auth).await?;
-    println!("Auth message sent to target node");
+    framed.send(Message::Auth).await?;
+    info!("Auth message sent to target node");
 
-    loop {
-        match framed.next().await {
-            Some(Ok(frame)) => match frame {
-                messages::Message::Auth => {}
-                messages::Message::AuthAck => {}
-                messages::Message::Hello => {
-                    framed.send(messages::Message::Ping).await?;
+    while let Some(message) = framed.next().await {
+        match message {
+            Ok(frame) => match frame {
+                Message::Auth => {}
+                Message::AuthAck => {}
+                Message::Hello => {
+                    framed.send(Message::Ping).await?;
                 }
-                messages::Message::Ping => {
-                    framed.send(messages::Message::Pong).await?;
+                Message::Ping => {
+                    framed.send(Message::Pong).await?;
                 }
-                messages::Message::Pong => {}
-                messages::Message::Disconnect(reason) => {
-                    println!("Disconnecting with reason: {reason}");
-                    std::process::exit(0);
+                Message::Pong => {
+                    framed.send(Message::Ping).await?;
+                }
+                Message::Disconnect(_reason) => {
+                    process::exit(0);
                 }
             },
-            Some(Err(e)) => {
-                println!("{e}");
+            Err(e) => {
+                error!("Error receiving message: {e}");
+                break;
             }
-            None => {}
         }
     }
+
+    warn!("Connection closed by the peer side");
+
+    Ok(())
 }
 
 fn parse_input() -> Result<(PublicKey, String)> {
-    let mut args = std::env::args();
+    let mut args = env::args();
     let _inner = args.next();
-    let id = args.next().unwrap_or_default();
-    let id_decoded = hex::decode(id).unwrap();
-    let public_key = public_key(&id_decoded)?;
+    let id = args
+        .next()
+        .ok_or_else(|| Error::InvalidInput("Missing node ID".to_string()))?;
+    let id_decoded =
+        hex::decode(id).map_err(|_| Error::InvalidInput("Invalid node ID".to_string()))?;
+    let public_key = public_key_from_slice(&id_decoded)?;
 
-    let ip_addr = args.next().unwrap_or_default();
-    let port = args.next().unwrap_or_default();
+    let ip_addr = args
+        .next()
+        .ok_or_else(|| Error::InvalidInput("Missing IP address".to_string()))?;
+    let port = args
+        .next()
+        .ok_or_else(|| Error::InvalidInput("Missing port".to_string()))?;
 
     let addr = format!("{}:{}", ip_addr, port);
-
     Ok((public_key, addr))
 }
 
-fn public_key(data: &[u8]) -> Result<PublicKey> {
-    let mut s = [4_u8; 65];
+fn public_key_from_slice(data: &[u8]) -> Result<PublicKey> {
+    const PUBLIC_KEY_LENGTH: usize = 64;
+    const PUBLIC_KEY_WITH_PREFIX_LENGTH: usize = 65;
+
+    if data.len() != PUBLIC_KEY_LENGTH {
+        return Err(Error::InvalidInput("Invalid public key length".to_string()));
+    }
+
+    let mut s = [4_u8; PUBLIC_KEY_WITH_PREFIX_LENGTH];
     s[1..].copy_from_slice(data);
 
-    let public_key =
-        PublicKey::from_slice(&s).map_err(|e| Error::InvalidPublicKey(e.to_string()))?;
-
-    Ok(public_key)
+    PublicKey::from_slice(&s).map_err(|e| Error::InvalidPublicKey(e.to_string()))
 }

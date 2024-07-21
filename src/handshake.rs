@@ -2,6 +2,7 @@ use aes::cipher::{KeyIvInit, StreamCipher};
 use byteorder::{BigEndian, ByteOrder};
 use bytes::{Bytes, BytesMut};
 use ethereum_types::{H128, H256};
+use log::info;
 use rlp::{Rlp, RlpStream};
 use secp256k1::{PublicKey, SecretKey, SECP256K1};
 use sha2::Digest;
@@ -152,6 +153,7 @@ impl Handshake {
         let msg = Ping {};
 
         let mut encoded_hello = BytesMut::default();
+        encoded_hello.extend_from_slice(&rlp::encode(&2_u8));
         encoded_hello.extend_from_slice(&rlp::encode(&msg));
 
         self.write_frame(&encoded_hello)
@@ -161,6 +163,7 @@ impl Handshake {
         let msg = Pong {};
 
         let mut encoded_hello = BytesMut::default();
+        encoded_hello.extend_from_slice(&rlp::encode(&3_u8));
         encoded_hello.extend_from_slice(&rlp::encode(&msg));
 
         self.write_frame(&encoded_hello)
@@ -263,7 +266,7 @@ impl Handshake {
         secrets.ingress_mac.compute_frame(frame_data);
 
         if frame_mac == secrets.ingress_mac.digest() {
-            println!("\nHandshake completed successfully\nReceived MAC is valid!!!\n");
+            info!("\nHandshake completed successfully\nReceived MAC is valid!!!\n");
         } else {
             return Err(Error::InvalidMac(frame_mac));
         }
@@ -275,3 +278,4 @@ impl Handshake {
         Ok((frame_data.to_owned(), total_bytes_used))
     }
 }
+
