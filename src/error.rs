@@ -32,12 +32,15 @@ pub enum Error {
     #[error("concat_kdf error {0}")]
     ConcatKdf(String),
 
-    #[error("secp256k1 error: {0}")]
-    Secp256k1(String),
-
     #[error("TryFromIntError: {0}")]
     TryFromInt(#[from] TryFromIntError),
 
     #[error("Unsupported message id: {0}")]
     UnsupportedMessageId(u8),
+
+    #[error("Rlp Decode Failed: {0:?}")]
+    RlpDecodeFailed(#[from] alloy_rlp::Error),
+
+    #[error("secp256k1: {0}")]
+    Secp256k1(#[from] secp256k1::Error),
 }

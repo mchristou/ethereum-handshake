@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rlp = "0.5.2"
 tokio = { version = "1.31.0", features = [
   "net",
   "rt",
@@ -35,3 +34,6 @@ tokio-util = { version = "0.7.11", features = ["codec"] }
 futures = "0.3.30"
 env_logger = "0.11.3"
 log = "0.4.22"
+alloy-rlp = { version = "0.3.7", features = ["derive"] }
+rlp = "0.5.2"
+alloy-primitives = "0.7.7"

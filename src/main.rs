@@ -1,5 +1,5 @@
 use futures::{SinkExt, StreamExt};
-use log::warn;
+use log::{debug, warn};
 use log::{error, info};
 use secp256k1::{PublicKey, SecretKey};
 use std::env;
@@ -56,9 +56,7 @@ async fn perform_handshake(stream: &mut TcpStream, node_public_key: PublicKey) -
             Ok(frame) => match frame {
                 Message::Auth => {}
                 Message::AuthAck => {}
-                Message::Hello => {
-                    framed.send(Message::Ping).await?;
-                }
+                Message::Hello => {}
                 Message::Ping => {
                     framed.send(Message::Pong).await?;
                 }
@@ -67,6 +65,10 @@ async fn perform_handshake(stream: &mut TcpStream, node_public_key: PublicKey) -
                 }
                 Message::Disconnect(_reason) => {
                     process::exit(0);
+                }
+                Message::Status(msg) => {
+                    debug!("Status message received: {msg:?}");
+                    framed.send(Message::Status(msg)).await?;
                 }
             },
             Err(e) => {

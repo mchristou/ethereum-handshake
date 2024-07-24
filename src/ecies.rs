@@ -63,8 +63,7 @@ impl Ecies {
         }
 
         let (pub_data, rest) = rest.split_at_mut(65);
-        let remote_ephemeral_pub_key =
-            PublicKey::from_slice(pub_data).map_err(|e| Error::Secp256k1(e.to_string()))?;
+        let remote_ephemeral_pub_key = PublicKey::from_slice(pub_data)?;
 
         let (iv, rest) = rest.split_at_mut(16);
         let (encrypted_data, tag) = rest.split_at_mut(payload_size as usize - (65 + 16 + 32));

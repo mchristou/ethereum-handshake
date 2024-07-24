@@ -1,3 +1,4 @@
+use alloy_rlp::Decodable;
 use bytes::{Buf, BytesMut};
 use log::{debug, error, info};
 use tokio_util::codec::{Decoder, Encoder};
@@ -28,27 +29,28 @@ impl Codec {
     }
 
     fn handle_incoming_frame(frame: Vec<u8>) -> Result<Message> {
-        let message_id = rlp::decode::<u8>(&[frame[0]])?;
-        debug!("Message ID: {}", message_id);
+        let (mut message_id, mut message) = frame.split_at(1);
+        let message_id: u8 = u8::decode(&mut message_id).unwrap();
+        debug!("Message ID received: {}", message_id);
 
         match message_id {
             0 => {
-                let hello = rlp::decode::<Hello>(&frame[1..])?;
+                let hello = Hello::decode(&mut message)?;
                 info!("Hello message from target node:\n{:?}", hello);
                 Ok(Message::Hello)
             }
             1 => {
-                let disc = rlp::decode::<Disconnect>(&frame[1..])?;
+                let disc = Disconnect::decode(&mut message)?;
                 info!("Disconnect message from target node:\n{:?}", disc);
                 Ok(Message::Disconnect(disc.reason))
             }
             2 => {
-                let _ping = rlp::decode::<Ping>(&frame[1..])?;
+                let _ping = Ping::decode(&mut message)?;
                 info!("Ping message received");
                 Ok(Message::Ping)
             }
             3 => {
-                let _pong = rlp::decode::<Pong>(&frame[1..])?;
+                let _pong = Pong::decode(&mut message)?;
                 info!("Pong message received");
                 Ok(Message::Pong)
             }
@@ -86,6 +88,10 @@ impl Encoder<Message> for Codec {
             Message::Pong => {
                 let pong = self.handshake.pong_msg();
                 dst.extend_from_slice(&pong);
+            }
+            Message::Status(msg) => {
+                let status = self.handshake.status_msg(msg);
+                dst.extend_from_slice(&status);
             }
         }
 

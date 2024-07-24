@@ -1,4 +1,6 @@
 use aes::cipher::{KeyIvInit, StreamCipher};
+use alloy_primitives::B512;
+use alloy_rlp::Encodable;
 use byteorder::{BigEndian, ByteOrder};
 use bytes::{Bytes, BytesMut};
 use ethereum_types::{H128, H256};
@@ -12,7 +14,7 @@ use crate::{
     ecies::Ecies,
     error::{Error, Result},
     hash_mac::HashMac,
-    messages::{Disconnect, Hello, Ping, Pong},
+    messages::{Disconnect, Hello, Ping, Pong, Status},
     secret::{Aes256Ctr64BE, Secrets},
 };
 
@@ -149,24 +151,41 @@ impl Handshake {
         H256::from(hasher.finalize().as_ref())
     }
 
+    pub fn status_msg(&mut self, status: Status) -> BytesMut {
+        let msg = Status {
+            version: status.version,
+            networkid: status.networkid,
+            td: status.td,
+            blockhash: status.blockhash,
+            genesis: status.genesis,
+            forkid: status.forkid,
+        };
+
+        let mut encoded_status = BytesMut::default();
+
+        Status::ID.encode(&mut encoded_status);
+        msg.encode(&mut encoded_status);
+        self.write_frame(&encoded_status)
+    }
+
     pub fn ping_msg(&mut self) -> BytesMut {
         let msg = Ping {};
 
-        let mut encoded_hello = BytesMut::default();
-        encoded_hello.extend_from_slice(&rlp::encode(&2_u8));
-        encoded_hello.extend_from_slice(&rlp::encode(&msg));
+        let mut encoded_ping = BytesMut::default();
+        Ping::ID.encode(&mut encoded_ping);
+        msg.encode(&mut encoded_ping);
 
-        self.write_frame(&encoded_hello)
+        self.write_frame(&encoded_ping)
     }
 
     pub fn pong_msg(&mut self) -> BytesMut {
         let msg = Pong {};
 
-        let mut encoded_hello = BytesMut::default();
-        encoded_hello.extend_from_slice(&rlp::encode(&3_u8));
-        encoded_hello.extend_from_slice(&rlp::encode(&msg));
+        let mut encoded_pong = BytesMut::default();
+        Pong::ID.encode(&mut encoded_pong);
+        msg.encode(&mut encoded_pong);
 
-        self.write_frame(&encoded_hello)
+        self.write_frame(&encoded_pong)
     }
 
     pub fn hello_msg(&mut self) -> BytesMut {
@@ -175,12 +194,12 @@ impl Handshake {
             client_version: "hello".to_string(),
             capabilities: vec![],
             port: 0,
-            id: self.ecies.public_key,
+            id: *B512::from_slice(&self.ecies.public_key.serialize_uncompressed()[1..]),
         };
 
         let mut encoded_hello = BytesMut::default();
-        encoded_hello.extend_from_slice(&rlp::encode(&0_u8));
-        encoded_hello.extend_from_slice(&rlp::encode(&msg));
+        Hello::ID.encode(&mut encoded_hello);
+        msg.encode(&mut encoded_hello);
 
         self.write_frame(&encoded_hello)
     }
@@ -189,8 +208,8 @@ impl Handshake {
         let msg = Disconnect { reason };
 
         let mut encoded_disc = BytesMut::default();
-        encoded_disc.extend_from_slice(&rlp::encode(&1_u8));
-        encoded_disc.extend_from_slice(&rlp::encode(&msg));
+        Disconnect::ID.encode(&mut encoded_disc);
+        msg.encode(&mut encoded_disc);
 
         self.write_frame(&encoded_disc)
     }
@@ -266,7 +285,7 @@ impl Handshake {
         secrets.ingress_mac.compute_frame(frame_data);
 
         if frame_mac == secrets.ingress_mac.digest() {
-            info!("\nHandshake completed successfully\nReceived MAC is valid!!!\n");
+            info!("\nReceived MAC is valid!!!\n");
         } else {
             return Err(Error::InvalidMac(frame_mac));
         }
@@ -278,4 +297,3 @@ impl Handshake {
         Ok((frame_data.to_owned(), total_bytes_used))
     }
 }
-
