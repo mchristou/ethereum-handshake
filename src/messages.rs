@@ -23,7 +23,7 @@ pub struct Hello {
 }
 
 impl Hello {
-    pub const ID: u8 = 0x0;
+    pub const ID: u8 = 0x00;
 }
 
 #[derive(Debug, RlpEncodable, RlpDecodable, PartialEq, Eq)]

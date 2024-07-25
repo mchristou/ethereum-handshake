@@ -14,7 +14,7 @@ use crate::{
     ecies::Ecies,
     error::{Error, Result},
     hash_mac::HashMac,
-    messages::{Disconnect, Hello, Ping, Pong, Status},
+    messages::{Capability, Disconnect, Hello, Ping, Pong, Status},
     secret::{Aes256Ctr64BE, Secrets},
 };
 
@@ -191,8 +191,11 @@ impl Handshake {
     pub fn hello_msg(&mut self) -> BytesMut {
         let msg = Hello {
             protocol_version: PROTOCOL_VERSION,
-            client_version: "hello".to_string(),
-            capabilities: vec![],
+            client_version: "Hello".to_string(),
+            capabilities: vec![Capability {
+                version: 68,
+                name: "eth".to_string(),
+            }],
             port: 0,
             id: *B512::from_slice(&self.ecies.public_key.serialize_uncompressed()[1..]),
         };

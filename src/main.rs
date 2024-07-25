@@ -1,9 +1,7 @@
 use futures::{SinkExt, StreamExt};
-use log::{debug, warn};
-use log::{error, info};
+use log::{error, info, warn};
 use secp256k1::{PublicKey, SecretKey};
-use std::env;
-use std::process;
+use std::{env, process};
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 
@@ -55,7 +53,9 @@ async fn perform_handshake(stream: &mut TcpStream, node_public_key: PublicKey) -
         match message {
             Ok(frame) => match frame {
                 Message::Auth => {}
-                Message::AuthAck => {}
+                Message::AuthAck => {
+                    framed.send(Message::Hello).await?;
+                }
                 Message::Hello => {}
                 Message::Ping => {
                     framed.send(Message::Pong).await?;
@@ -67,7 +67,6 @@ async fn perform_handshake(stream: &mut TcpStream, node_public_key: PublicKey) -
                     process::exit(0);
                 }
                 Message::Status(msg) => {
-                    debug!("Status message received: {msg:?}");
                     framed.send(Message::Status(msg)).await?;
                 }
             },

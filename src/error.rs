@@ -43,4 +43,7 @@ pub enum Error {
 
     #[error("secp256k1: {0}")]
     Secp256k1(#[from] secp256k1::Error),
+
+    #[error("Snap error: {0}")]
+    Snap(#[from] snap::Error),
 }

@@ -37,3 +37,4 @@ log = "0.4.22"
 alloy-rlp = { version = "0.3.7", features = ["derive"] }
 rlp = "0.5.2"
 alloy-primitives = "0.7.7"
+snap = "1.1.1"

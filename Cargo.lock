@@ -645,6 +645,7 @@ dependencies = [
  "secp256k1",
  "sha2",
  "sha3",
+ "snap",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -1545,6 +1546,12 @@ checksum = "8f92a496fb766b417c996b9c5e57daf2f7ad3b0bebe1ccfca4856390e3d3bb67"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "snap"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b6b67fb9a61334225b5b790716f609cd58395f895b3fe8b328786812a40bc3b"
 
 [[package]]
 name = "socket2"
