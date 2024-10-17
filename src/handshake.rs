@@ -127,13 +127,8 @@ impl Handshake {
         let iv = H128::default();
 
         self.secrets = Some(Secrets {
-            aes_secret,
-            mac_secret,
-            shared_secret,
-
             egress_mac,
             ingress_mac,
-
             ingress_aes: Aes256Ctr64BE::new(aes_secret.as_ref().into(), iv.as_ref().into()),
             egress_aes: Aes256Ctr64BE::new(aes_secret.as_ref().into(), iv.as_ref().into()),
         });
