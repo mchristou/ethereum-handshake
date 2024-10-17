@@ -72,5 +72,5 @@ pub struct Status {
 }
 
 impl Status {
-    pub const ID: u8 = 0x16;
+    pub const ID: u8 = 0x10;
 }
