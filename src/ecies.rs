@@ -93,8 +93,7 @@ impl Ecies {
         let iv = H128::random();
         let (encryption_key, mac_key) = self.derive_keys(&shared_key)?;
 
-        let total_size = u16::try_from(65 + 16 + data_in.len() + 32)
-            .map_err(|_| Error::InvalidInput("Data size overflow".to_string()))?;
+        let total_size = u16::try_from(65 + 16 + data_in.len() + 32)?;
 
         let encrypted_data = self.encrypt_data(data_in, &iv, &encryption_key);
         let tag = self.calculate_tag(&mac_key, &iv, &total_size.to_be_bytes(), &encrypted_data)?;

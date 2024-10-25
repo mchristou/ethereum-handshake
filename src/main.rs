@@ -1,7 +1,8 @@
+use argh::FromArgs;
 use futures::{SinkExt, StreamExt};
 use log::{error, info, warn};
 use secp256k1::{PublicKey, SecretKey};
-use std::{env, process};
+use std::process;
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 
@@ -20,25 +21,46 @@ use crate::{
     messages::Message,
 };
 
+#[derive(FromArgs, Debug)]
+/// CLI that performs handshake with Ethereum nodes.
+struct Args {
+    /// the ID of the target node
+    #[argh(positional)]
+    id: String,
+    /// the IP of the target node
+    #[argh(positional)]
+    ip: String,
+    /// the port of the target node
+    #[argh(positional)]
+    port: String,
+}
+
 #[tokio::main(flavor = "current_thread")]
-async fn main() {
+async fn main() -> Result<()> {
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var("RUST_LOG", "info");
+    }
+
     env_logger::init();
 
-    match parse_input() {
-        Ok((node_public_key, node_address)) => {
-            info!("Target address: {node_address}");
-            match TcpStream::connect(&node_address).await {
-                Ok(mut stream) => {
-                    info!("Connected to target address");
-                    if let Err(e) = perform_handshake(&mut stream, node_public_key).await {
-                        error!("Handshake error: {e}");
-                    }
-                }
-                Err(e) => error!("Failed to connect to the given Ethereum node: {e}"),
+    let args: Args = argh::from_env();
+    let node_address = format!("{}:{}", args.ip, args.port);
+    let id_decoded =
+        hex::decode(args.id).map_err(|_| Error::InvalidInput("Invalid node ID".to_string()))?;
+    let public_key = public_key_from_slice(&id_decoded)?;
+
+    info!("Connecting to target address: {node_address}");
+    match TcpStream::connect(&node_address).await {
+        Ok(mut stream) => {
+            info!("Connected to target address");
+            if let Err(e) = perform_handshake(&mut stream, public_key).await {
+                error!("Handshake error: {e}");
             }
         }
-        Err(e) => error!("Error parsing input: {e}"),
+        Err(e) => error!("Failed to connect to the given Ethereum node: {e}"),
     }
+
+    Ok(())
 }
 
 async fn perform_handshake(stream: &mut TcpStream, node_public_key: PublicKey) -> Result<()> {
@@ -80,27 +102,6 @@ async fn perform_handshake(stream: &mut TcpStream, node_public_key: PublicKey) -
     warn!("Connection closed by the peer side");
 
     Ok(())
-}
-
-fn parse_input() -> Result<(PublicKey, String)> {
-    let mut args = env::args();
-    let _inner = args.next();
-    let id = args
-        .next()
-        .ok_or_else(|| Error::InvalidInput("Missing node ID".to_string()))?;
-    let id_decoded =
-        hex::decode(id).map_err(|_| Error::InvalidInput("Invalid node ID".to_string()))?;
-    let public_key = public_key_from_slice(&id_decoded)?;
-
-    let ip_addr = args
-        .next()
-        .ok_or_else(|| Error::InvalidInput("Missing IP address".to_string()))?;
-    let port = args
-        .next()
-        .ok_or_else(|| Error::InvalidInput("Missing port".to_string()))?;
-
-    let addr = format!("{}:{}", ip_addr, port);
-    Ok((public_key, addr))
 }
 
 fn public_key_from_slice(data: &[u8]) -> Result<PublicKey> {
