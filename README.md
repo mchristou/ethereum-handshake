@@ -10,39 +10,46 @@ To test execute "cargo run [id] [ip] [port]"
 For example:
 
 ```
- cargo run 4a3d84a401ea8a9cce6236a6f152927cceef917fc9027f09f4ac8215f26e908c907730b353caf0c7374b200da1e0e3dfef67edd9934318c73317520b1bcd2550 195.201.207.37 30303
+cargo run c6e7a6a1934fa4bcad9bd448afd490661c6f2186fd07fe68ae76805bedbe0631594ed320f9a420cdcfe8510079135c1496f41a6b9c7c6f452dc7ebd640356f47 40.160.12.24 30303
 ```
 
 output:
 
 ```
-Target adress: 195.201.207.37:30303
-Connected to target adress
-Auth message send to target node
+[2024-10-25T05:36:59Z INFO  ethereum_handshake] Target address: 40.160.12.24:30303
+[2024-10-25T05:37:00Z INFO  ethereum_handshake] Connected to target address
+[2024-10-25T05:37:00Z INFO  ethereum_handshake] Auth message sent to target node
+[2024-10-25T05:37:00Z INFO  ethereum_handshake::handshake]
+    Received MAC is valid!!!
 
-Hanshake completed succesfully
- Received MAC is valid!!!
+[2024-10-25T05:37:00Z INFO  ethereum_handshake::codec] Hello message from target node:
+    Hello { protocol_version: 5, client_version: "Geth/v1.13.14-stable/linux-amd64/go1.22.4", capabilities: [Capability { name: "eth", version: 68 }, Capability { name: "snap", version: 1 }], port: 0, id: [198, 231, 166, 161, 147, 79, 164, 188, 173, 155, 212, 72, 175, 212, 144, 102, 28, 111, 33, 134, 253, 7, 254, 104, 174, 118, 128, 91, 237, 190, 6, 49, 89, 78, 211, 32, 249, 164, 32, 205, 207, 232, 81, 0, 121, 19, 92, 20, 150, 244, 26, 107, 156, 124, 111, 69, 45, 199, 235, 214, 64, 53, 111, 71] }
+[2024-10-25T05:37:00Z INFO  ethereum_handshake::handshake]
+    Received MAC is valid!!!
 
-Hello message from target node:
-Hello { protocol_version: 5, client_version: "Geth/v1.11.6-stable-ea9e62ca/linux-amd64/go1.20.3", capabilities: [Capability { name: "eth", version: 66 }, Capability { name: "eth", version: 67 }, Capability { name: "eth", version: 68 }, Capability { name: "snap", version: 1 }], port: 0, id: PublicKey(8c906ef21582acf4097f02c97f91efce7c9252f1a63662ce9c8aea01a4843d4a5025cd1b0b521733c7184393d9ed67efdfe3e0a10d204b37c7f0ca53b3307790) }
+[2024-10-25T05:37:00Z INFO  ethereum_handshake::codec] Status message received: Status { version: 68, networkid: 1, td: 58750003716598352816469, blockhash: [215, 103, 106, 179, 199, 128, 92, 254, 141, 113, 203, 53, 166, 119, 170, 243, 207, 222, 10, 227, 48, 218, 231, 80, 107, 73, 175, 212, 125, 88, 50, 40], genesis: [212, 229, 103, 64, 248, 118, 174, 248, 192, 16, 184, 106, 64, 213, 245, 103, 69, 161, 24, 208, 144, 106, 52, 230, 154, 236, 140, 13, 177, 203, 143, 163], forkid: ForkId { hash: 2671583828, next: 0 } }
 ```
 
 ```
- cargo run 5982f04beb8ccffd51d37ca87ac83a41a813a0bf2c752049e3912729ebee3cfd28ca7703b8d695746fbc3607fadbd1992f1f392750cd9173dc5327e10ca596cc 13.212.31.61 30303
+cargo run 1e2cffe237a53d33efe71f6661cb46f8404a590e0ff2131525a901480a49dc7f20d7ffb5c4e5a84664021d439b5daff7076e7ae2742d676ee3465e1929639cd6 158.41.53.148 30404
 ```
 
 output:
 
 ```
-Target adress: 13.212.31.61:30303
-Connected to target adress
-Auth message send to target node
+[2024-10-25T05:43:06Z INFO  ethereum_handshake] Connecting to target address: 158.41.53.148:30404
+[2024-10-25T05:43:07Z INFO  ethereum_handshake] Connected to target address
+[2024-10-25T05:43:07Z INFO  ethereum_handshake] Auth message sent to target node
+[2024-10-25T05:43:07Z INFO  ethereum_handshake::handshake]
+    Received MAC is valid!!!
 
-Hanshake completed succesfully
- Received MAC is valid!!!
+[2024-10-25T05:43:07Z INFO  ethereum_handshake::codec] Hello message from target node:
+    Hello { protocol_version: 5, client_version: "Nethermind/v1.29.1+dfea5240/linux-x64/dotnet8.0.10", capabilities: [Capability { name: "eth", version: 66 }, Capability { name: "eth", version: 67 }, Capability { name: "eth", version: 68 }, Capability { name: "nodedata", version: 1 }], port: 30404, id: [30, 44, 255, 226, 55, 165, 61, 51, 239, 231, 31, 102, 97, 203, 70, 248, 64, 74, 89, 14, 15, 242, 19, 21, 37, 169, 1, 72, 10, 73, 220, 127, 32, 215, 255, 181, 196, 229, 168, 70, 100, 2, 29, 67, 155, 93, 175, 247, 7, 110, 122, 226, 116, 45, 103, 110, 227, 70, 94, 25, 41, 99, 156, 214] }
+[2024-10-25T05:43:07Z INFO  ethereum_handshake::handshake]
+    Received MAC is valid!!!
 
-Hello message from target node:
-Hello { protocol_version: 5, client_version: "Geth/v1.11.6-stable/linux-amd64/go1.20.3", capabilities: [Capability { name: "eth", version: 66 }, Capability { name: "eth", version: 67 }, Capability { name: "eth", version: 68 }, Capability { name: "snap", version: 1 }], port: 0, id: PublicKey(fd3ceeeb292791e34920752cbfa013a8413ac87aa87cd351fdcf8ceb4bf08259cc96a50ce12753dc7391cd5027391f2f99d1dbfa0736bc6f7495d6b80377ca28) }
+[2024-10-25T05:43:07Z INFO  ethereum_handshake::codec] Disconnect message from target node:
+    Disconnect { reason: 4 }
 ```
 
 ### Logger
