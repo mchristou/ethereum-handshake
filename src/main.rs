@@ -2,7 +2,7 @@ use argh::FromArgs;
 use futures::{SinkExt, StreamExt};
 use log::{error, info, warn};
 use secp256k1::{PublicKey, SecretKey};
-use std::process;
+use std::{net::IpAddr, process};
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 
@@ -29,16 +29,16 @@ struct Args {
     id: String,
     /// the IP of the target node
     #[argh(positional)]
-    ip: String,
+    ip: IpAddr,
     /// the port of the target node
     #[argh(positional)]
-    port: String,
+    port: u16,
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var("RUST_LOG", "info");
+        std::env::set_var("RUST_LOG", "debug");
     }
 
     env_logger::init();

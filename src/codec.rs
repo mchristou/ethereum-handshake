@@ -1,6 +1,6 @@
 use alloy_rlp::Decodable;
 use bytes::{Buf, BytesMut};
-use log::{debug, error, info};
+use log::{debug, error};
 use snap::raw::Decoder as SnapDecoder;
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -37,13 +37,13 @@ impl Codec {
         match message_id {
             Hello::ID => {
                 let hello = Hello::decode(&mut &message[..])?;
-                info!("Hello message from target node:\n{:?}", hello);
+                debug!("Hello message from target node:\n{:?}", hello);
                 Ok(Message::Hello)
             }
             Disconnect::ID => {
                 let disc = match Disconnect::decode(&mut &message[..]) {
                     Ok(disc) => {
-                        info!("Disconnect message from target node:\n{:?}", disc);
+                        debug!("Disconnect message from target node:\n{:?}", disc);
                         disc
                     }
                     Err(_) => {
@@ -54,17 +54,17 @@ impl Codec {
                     }
                 };
 
-                info!("Disconnect message from target node:\n{:?}", disc);
+                debug!("Disconnect message from target node:\n{:?}", disc);
                 Ok(Message::Disconnect(disc.reason))
             }
             Ping::ID => {
                 let _ping = Ping::decode(&mut &message[..])?;
-                info!("Ping message received");
+                debug!("Ping message received");
                 Ok(Message::Ping)
             }
             Pong::ID => {
                 let _pong = Pong::decode(&mut &message[..])?;
-                info!("Pong message received");
+                debug!("Pong message received");
                 Ok(Message::Pong)
             }
             _ => self.handle_eth_wire_messages(message_id, message),
@@ -78,7 +78,7 @@ impl Codec {
                 let buf = Self::snappy_decompress(&message[..idx])
                     .unwrap_or_else(|_| BytesMut::from(message));
                 let status = Status::decode(&mut &buf[..])?;
-                info!("Status message received: {:?}", status);
+                debug!("Status message received: {:?}", status);
                 Ok(Message::Status(status))
             }
             _ => {
